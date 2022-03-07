@@ -611,9 +611,10 @@ export class BattleScene implements BattleSceneStub {
 		return BattleLog.escapeHTML(name);
 	}
 	getSidebarHTML(side: Side, posStr: string): string {
+    let isCH = true;
 		let noShow = this.battle.hardcoreMode && this.battle.gen < 7;
 
-		let speciesOverage = this.battle.speciesClause ? Infinity : Math.max(side.pokemon.length - side.totalPokemon, 0);
+		let speciesOverage = (this.battle.speciesClause && !isCH) ? Infinity : Math.max(side.pokemon.length - side.totalPokemon, 0);
 		const sidebarIcons: (
 			['pokemon' | 'pokemon-illusion', number] | ['unrevealed' | 'empty' | 'pseudo-zoroark', null]
 		)[] = [];
@@ -650,7 +651,8 @@ export class BattleScene implements BattleSceneStub {
 		while (sidebarIcons.length < side.totalPokemon) {
 			sidebarIcons.push(['unrevealed', null]);
 		}
-		while (sidebarIcons.length < 6) {
+    let numIcon = isCH ? 12 : 6;
+		while (sidebarIcons.length < isCH) {
 			sidebarIcons.push(['empty', null]);
 		}
 
@@ -679,6 +681,11 @@ export class BattleScene implements BattleSceneStub {
 				const details = this.getDetailsText(poke);
 				pokemonhtml += `<span${tooltipCode} style="` + Dex.getPokemonIcon(poke, !side.isFar) + `;opacity:0.6" aria-label="${details}"></span>`;
 			} else {
+        // change for fainted mons here
+        if (poke.fainted) {
+          pokemonhtml += `<span class="picon" style="` + Dex.getPokemonIcon('pokeball-none') + `"></span>`;
+          continue;
+        }
 				const details = this.getDetailsText(poke);
 				pokemonhtml += `<span${tooltipCode} style="` + Dex.getPokemonIcon(poke, !side.isFar) + `" aria-label="${details}"></span>`;
 			}
