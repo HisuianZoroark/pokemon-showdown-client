@@ -674,7 +674,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 
 	protected formatType: 'doubles' | 'bdsp' | 'bdspdoubles' | 'rs' | 'frlg' | 'bw1' | 'letsgo' | 'metronome' | 'natdex' |
 		'nfe' | 'ssdlc1' | 'ssdlc1doubles' | 'predlc' | 'predlcdoubles' | 'svdlc1' | 'svdlc1doubles' | 'stadium' | 'lc' |
-		'champions' | 'natdexchampions' | null = null;
+		'champions' | 'natdexchampions' | 'championsdoubles' | null = null;
 	isDoubles = false;
 
 	/**
@@ -745,13 +745,16 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (format.startsWith('natdex') || format.startsWith('nationaldex')) this.formatType = 'natdexchampions';
 			if (format.startsWith('natdex')) format = format.slice(6) as ID;
 			if (format.startsWith('nationaldex')) format = format.slice(11) as ID;
-			if (format.startsWith('vgc') || format.startsWith('doubles')) this.isDoubles = true;
-			// we don't have Champions tables for VGC/BSS yet, so we're using Ubers for now
+			// we don't have Champions tables for VGC/BSS yet, so we're using Doubles/Ubers for now
 			// also makes it so we don't override formatType later
-			if (format.startsWith('vgc') || format.startsWith('bss')) format = 'ubers' as ID;
+			if (format.startsWith('bss')) format = 'ubers' as ID;
 			if (format.endsWith('draft')) format = 'ag' as ID;
+			if (format.startsWith('doubles') || format.startsWith('vgc')) {
+				this.isDoubles = true;
+				this.formatType = 'championsdoubles';
+			}
 		}
-		if (format.startsWith('vgc')) {
+		if (format.startsWith('vgc') && this.formatType !== 'championsdoubles') {
 			this.formatType = 'doubles';
 			this.isDoubles = true;
 		}
@@ -913,7 +916,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 		if (this.formatType === 'bw1') table = table['gen5bw1'];
 		if (this.formatType === 'rs') table = table['gen3rs'];
 		if (this.formatType === 'frlg') table = table['gen3frlg'];
-		if (this.formatType === 'champions') table = table['champions'];
+		if (this.formatType?.startsWith('champions')) table = table['champions'];
 		if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 		if (speciesid in table.learnsets) return speciesid;
 		const species = this.dex.species.get(speciesid);
@@ -985,7 +988,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			if (this.formatType === 'bw1') table = table['gen5bw1'];
 			if (this.formatType === 'rs') table = table['gen3rs'];
 			if (this.formatType === 'frlg') table = table['gen3frlg'];
-			if (this.formatType === 'champions') table = table['champions'];
+			if (this.formatType?.startsWith('champions')) table = table['champions'];
 			if (this.formatType === 'natdexchampions') table = table['natdexchampions'];
 			let learnset = table.learnsets[learnsetid];
 			const eggMovesOnly = this.eggMovesOnly(learnsetid, speciesid);
@@ -1023,6 +1026,7 @@ abstract class BattleTypedSearch<T extends SearchType> {
 			this.formatType === 'natdex' ? `gen${gen}natdex` :
 			this.formatType === 'stadium' ? `gen${gen}stadium${gen > 1 ? gen : ''}` :
 			this.formatType === 'champions' ? `champions` :
+			this.formatType === 'championsdoubles' ? `championsdoubles` :
 			this.formatType === 'natdexchampions' ? `natdexchampions` :
 			`gen${gen}`;
 		if (table?.[tableKey]) {
@@ -1125,6 +1129,8 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 			table = table[`gen${dex.gen}`];
 		} else if (this.formatType === 'champions') {
 			table = table[`champions`];
+		} else if (this.formatType === 'championsdoubles') {
+			table = table[`championsdoubles`];
 		} else if (this.formatType === 'natdexchampions') {
 			table = table[`natdexchampions`];
 		} else if (isVGCOrBS) {
@@ -1252,6 +1258,7 @@ class BattlePokemonSearch extends BattleTypedSearch<'pokemon'> {
 		} else if (format === 'monotype' || format.startsWith('monothreat')) tierSet = tierSet.slice(slices.Uber);
 		else if (format === 'doublesubers') tierSet = tierSet.slice(slices.DUber);
 		else if (format === 'doublesou' && dex.gen > 4) tierSet = tierSet.slice(slices.DOU);
+		else if (format === 'doubles' && this.formatType === 'championsdoubles') tierSet = tierSet.slice(slices.DOU); // Formatted as Doubles, not Doubles OU
 		else if (format === 'doublesuu') tierSet = tierSet.slice(slices.DUU);
 		else if (format === 'doublesnu') tierSet = tierSet.slice(slices.DNU || slices.DUU);
 		else if (this.formatType?.startsWith('bdsp') || this.formatType === 'letsgo' || this.formatType === 'stadium') {
@@ -1500,12 +1507,14 @@ class BattleItemSearch extends BattleTypedSearch<'item'> {
 			table = table['gen3frlg'];
 		} else if (this.formatType === 'natdex') {
 			table = table[`gen${this.dex.gen}natdex`];
-		} else if (this.formatType?.endsWith('doubles')) { // no natdex/bdsp doubles support
+		} else if (this.formatType?.endsWith('doubles') && this.formatType !== 'championsdoubles') { // no natdex/bdsp doubles support
 			table = table[`gen${this.dex.gen}doubles`];
 		} else if (this.formatType === 'metronome') {
 			table = table[`gen${this.dex.gen}metronome`];
 		} else if (this.formatType === 'champions') {
 			table = table[`champions`];
+		} else if (this.formatType === 'championsdoubles') {
+			table = table[`championsdoubles`];
 		} else if (this.formatType === 'natdexchampions') {
 			table = table[`natdexchampions`];
 		} else if (this.dex.gen < 9) {
@@ -1895,7 +1904,7 @@ class BattleMoveSearch extends BattleTypedSearch<'move'> {
 		if (this.formatType === 'bw1') lsetTable = lsetTable['gen5bw1'];
 		if (this.formatType === 'rs') lsetTable = lsetTable['gen3rs'];
 		if (this.formatType === 'frlg') lsetTable = lsetTable['gen3frlg'];
-		if (this.formatType === 'champions') lsetTable = lsetTable['champions'];
+		if (this.formatType?.startsWith('champions')) lsetTable = lsetTable['champions'];
 		if (this.formatType === 'natdexchampions') lsetTable = lsetTable['natdexchampions'];
 		if (this.formatType?.startsWith('ssdlc1')) lsetTable = lsetTable['gen8dlc1'];
 		if (this.formatType?.startsWith('predlc')) lsetTable = lsetTable['gen9predlc'];
